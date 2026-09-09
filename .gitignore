@@ -1,8 +1,10 @@
 # dependencies
 node_modules/
 
-# secrets
+# local config / secrets
 .env
+.env.*
+!.env.example
 
 # WhatsApp (Baileys) auth state
 .baileys_auth/
