@@ -1,0 +1,20 @@
+services:
+  solarwatch:
+    build: .
+    image: solarwatch
+    container_name: solarwatch
+    restart: unless-stopped
+    # Reads .env if present; you can also pass the vars via `environment:` or the host.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SOLARWATCH_DATA_DIR: /data
+    volumes:
+      - solarwatch-data:/data
+    stop_grace_period: 20s
+    # tty so `docker compose run` can show the QR code for list-groups
+    tty: true
+
+volumes:
+  solarwatch-data:

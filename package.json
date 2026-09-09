@@ -1,0 +1,49 @@
+{
+  "name": "solarwatch",
+  "version": "1.0.0",
+  "description": "Monitors a DessMonitor / SmartESS solar inverter and sends a heartbeat + smart alerts to WhatsApp or a webhook.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/alerts.test.mjs",
+    "send-now": "node scripts/send-now.js",
+    "check-alerts": "node scripts/check-alerts.js",
+    "list-devices": "node scripts/list-devices.js",
+    "list-groups": "node scripts/list-groups.js",
+    "join-group": "node scripts/join-group.js"
+  },
+  "keywords": [
+    "dessmonitor",
+    "smartess",
+    "solar",
+    "inverter",
+    "off-grid",
+    "whatsapp",
+    "baileys",
+    "monitoring",
+    "alerts",
+    "home-automation"
+  ],
+  "author": "Saim Zaib (@saimcyber)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saimcyber/solarwatch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saimcyber/solarwatch/issues"
+  },
+  "homepage": "https://github.com/saimcyber/solarwatch#readme",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "axios": "^1.20.0",
+    "croner": "^9.1.0",
+    "dotenv": "^16.6.1",
+    "pino": "^10.3.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

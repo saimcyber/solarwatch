@@ -1,0 +1,4 @@
+# Normalise line endings — this runs on Linux servers.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

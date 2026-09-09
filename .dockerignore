@@ -1,0 +1,8 @@
+node_modules
+.git
+.env
+.baileys_auth
+.state.json
+.state.json.tmp
+*.log
+npm-debug.log*

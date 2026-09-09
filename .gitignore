@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# secrets
+.env
+
+# WhatsApp (Baileys) auth state
+.baileys_auth/
+
+# runtime alert state
+.state.json
+.state.json.tmp
+
+# misc
+*.log
+npm-debug.log*
+.DS_Store
