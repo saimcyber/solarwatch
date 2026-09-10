@@ -1,4 +1,7 @@
-import 'dotenv/config';
+// override:true so values in .env win over any variables the host container injects
+// (e.g. a forced TZ=Etc/UTC on Pterodactyl-style hosts).
+import { config as loadEnv } from 'dotenv';
+loadEnv({ override: true });
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
