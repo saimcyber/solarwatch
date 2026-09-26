@@ -7,9 +7,19 @@ import { loadState, saveState } from './state.js';
 import { start, send, stop } from './notify/index.js';
 
 const ts = () => new Date().toISOString();
+const TICK_TIMEOUT_MS = 60000;
 
 let state = null;
 let busy = false;
+
+/** Race a promise against a timeout so a hung network call can never wedge a tick forever. */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 async function fetchStatus() {
   return getStatus(requireDevice());
@@ -45,8 +55,8 @@ async function tick(kind) {
   }
   busy = true;
   try {
-    if (kind === 'alert') await runAlerts();
-    else await runStatus();
+    const run = kind === 'alert' ? runAlerts() : runStatus();
+    await withTimeout(run, TICK_TIMEOUT_MS, `${kind} tick`);
   } catch (err) {
     console.error(`[${ts()}] ${kind} tick failed:`, err.message);
   } finally {

@@ -13,71 +13,83 @@ const CONNECT_TIMEOUT_MS = 90000;
 const logger = pino({ level: 'silent' });
 
 let sock = null;
-let openPromise = null;
+let openPromise = null; // always mirrors the CURRENT connection attempt/state; null = disconnected
 let stopped = false;
 
-async function connect(onOpen, onFatal) {
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
-
-  sock = makeWASocket({
-    version,
-    auth: state,
-    logger,
-    browser: ['SolarWatch', 'Chrome', '1.0.0'],
-    markOnlineOnConnect: false,
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      console.log('\nScan this QR with WhatsApp (Settings → Linked devices → Link a device):\n');
-      qrcode.generate(qr, { small: true });
-    }
-
-    if (connection === 'open') {
-      console.log('WhatsApp: connected.');
-      onOpen(sock);
-    }
-
-    if (connection === 'close') {
-      if (stopped) return;
-      const code = lastDisconnect?.error?.output?.statusCode;
-
-      if (code === DisconnectReason.loggedOut) {
-        onFatal(new Error(`WhatsApp logged out. Delete "${AUTH_DIR}" and re-link with \`npm run list-groups\`.`));
-        return;
-      }
-      // 515 restartRequired (normal right after pairing) or a dropped link — reconnect.
-      console.warn(`WhatsApp: connection closed (code ${code ?? 'n/a'}), reconnecting...`);
-      setTimeout(() => connect(onOpen, onFatal).catch(onFatal), 2000);
-    }
-  });
-}
-
-/** Connect (or reuse an open connection) and resolve with the socket once ready. */
-export function start() {
-  if (openPromise) return openPromise;
-  stopped = false;
-  openPromise = new Promise((resolve, reject) => {
+/**
+ * Open one socket and settle when it either connects or closes. On a non-fatal
+ * close this schedules the next attempt itself and — critically — replaces
+ * `openPromise` with THAT attempt's promise, so nothing is ever left awaiting a
+ * promise resolved to an old, dead socket.
+ */
+function connect(delayMs = 0) {
+  return new Promise((resolve, reject) => {
     let settled = false;
-    const finish = (fn) => (arg) => {
-      if (settled) {
-        if (arg instanceof Error) console.error('WhatsApp:', arg.message);
-        return;
-      }
+    const settle = (fn) => (arg) => {
+      if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (fn === reject) openPromise = null;
       fn(arg);
     };
     const timer = setTimeout(
-      () => finish(reject)(new Error(`WhatsApp did not connect within ${CONNECT_TIMEOUT_MS / 1000}s.`)),
+      () => settle(reject)(new Error(`WhatsApp did not connect within ${CONNECT_TIMEOUT_MS / 1000}s.`)),
       CONNECT_TIMEOUT_MS,
     );
-    connect(finish(resolve), finish(reject)).catch(finish(reject));
+
+    const open = async () => {
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      if (stopped) return settle(reject)(new Error('WhatsApp: stopped before reconnect completed.'));
+
+      const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+      const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
+
+      sock = makeWASocket({
+        version,
+        auth: state,
+        logger,
+        browser: ['SolarWatch', 'Chrome', '1.0.0'],
+        markOnlineOnConnect: false,
+      });
+
+      sock.ev.on('creds.update', saveCreds);
+
+      sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+        if (qr) {
+          console.log('\nScan this QR with WhatsApp (Settings → Linked devices → Link a device):\n');
+          qrcode.generate(qr, { small: true });
+        }
+
+        if (connection === 'open') {
+          console.log('WhatsApp: connected.');
+          settle(resolve)(sock);
+        }
+
+        if (connection === 'close') {
+          if (stopped) return;
+          const code = lastDisconnect?.error?.output?.statusCode;
+
+          if (code === DisconnectReason.loggedOut) {
+            openPromise = null;
+            settle(reject)(new Error(`WhatsApp logged out. Delete "${AUTH_DIR}" and re-link with \`npm run list-groups\`.`));
+            return;
+          }
+          // 515 restartRequired (normal right after pairing) or a dropped link — reconnect.
+          // Replace openPromise immediately so nothing awaits the stale, now-dead socket.
+          console.warn(`WhatsApp: connection closed (code ${code ?? 'n/a'}), reconnecting...`);
+          settle(reject)(new Error(`WhatsApp connection closed (code ${code ?? 'n/a'}), reconnecting`));
+          openPromise = connect(2000);
+        }
+      });
+    };
+    open().catch(settle(reject));
   });
+}
+
+/** Connect (or reuse the current in-flight/open connection) and resolve with the socket once ready. */
+export function start() {
+  if (openPromise) return openPromise;
+  stopped = false;
+  openPromise = connect();
   return openPromise;
 }
 
