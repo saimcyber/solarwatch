@@ -4,6 +4,7 @@ import { getStatus } from './dess/data.js';
 import { formatHeartbeat } from './format.js';
 import { evaluateAlerts, activeTitles } from './alerts.js';
 import { loadState, saveState } from './state.js';
+import { logAlertEvent } from './alertLog.js';
 import { start, send, stop } from './notify/index.js';
 
 const ts = () => new Date().toISOString();
@@ -31,7 +32,8 @@ async function runAlerts() {
   saveState(state);
   for (const m of messages) {
     await send(m.text);
-    console.log(`[${ts()}] alert sent (${m.level})`);
+    logAlertEvent({ ruleId: m.ruleId, level: m.level, kind: m.kind, text: m.text, status });
+    console.log(`[${ts()}] alert sent (${m.level}${m.ruleId ? `, ${m.ruleId}` : ''})`);
   }
   if (suppressed) console.log(`[${ts()}] ${suppressed} alert(s) suppressed by quiet hours`);
   if (!messages.length && !suppressed) console.log(`[${ts()}] alert check — nothing new`);

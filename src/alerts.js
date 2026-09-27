@@ -268,6 +268,8 @@ function solarDayEvents(state, s, now) {
     state.solar.endHits = 0;
     msgs.push({
       level: 'info',
+      ruleId: 'solar_started',
+      kind: 'info',
       text: formatAlert({ level: 'info', kind: 'info', title: 'Solar production started for today ☀️' }, s),
     });
   }
@@ -282,6 +284,8 @@ function solarDayEvents(state, s, now) {
         const kwh = s.energyToday != null ? ` — ${fmt(s.energyToday, 'kWh', 1)} generated` : '';
         msgs.push({
           level: 'info',
+          ruleId: 'solar_ended',
+          kind: 'info',
           text: formatAlert(
             { level: 'info', kind: 'info', title: `Solar production has stopped for today 🌙${kwh}` },
             null,
@@ -304,7 +308,7 @@ export function evaluateAlerts(status, state, now = new Date()) {
   const messages = [];
 
   const rolled = accumulateDaily(state, status, now);
-  if (rolled) messages.push({ level: 'info', text: rolled });
+  if (rolled) messages.push({ level: 'info', ruleId: 'daily_rollover', kind: 'info', text: rolled });
 
   rollSolarDay(state, status, now);
 
@@ -327,12 +331,15 @@ export function evaluateAlerts(status, state, now = new Date()) {
         if (a.hits >= rule.sustain) {
           a.active = true;
           a.since = now.toISOString();
+          const kind = rule.level === 'info' ? 'info' : 'fired';
           messages.push({
             level: rule.level,
+            ruleId: rule.id,
+            kind,
             text: formatAlert(
               {
                 level: rule.level,
-                kind: rule.level === 'info' ? 'info' : 'fired',
+                kind,
                 title: rule.title(status, ctx),
                 advice: rule.advice ? rule.advice(status, ctx) : null,
               },
@@ -359,6 +366,8 @@ export function evaluateAlerts(status, state, now = new Date()) {
         if (rule.clearedTitle) {
           messages.push({
             level: rule.level === 'info' ? 'info' : rule.level,
+            ruleId: rule.id,
+            kind: 'cleared',
             text: formatAlert(
               { level: rule.level, kind: 'cleared', title: rule.clearedTitle },
               status,
@@ -373,7 +382,7 @@ export function evaluateAlerts(status, state, now = new Date()) {
   messages.push(...solarDayEvents(state, status, now));
 
   const summary = maybeDailySummary(state, now);
-  if (summary) messages.push({ level: 'info', text: summary });
+  if (summary) messages.push({ level: 'info', ruleId: 'daily_summary', kind: 'info', text: summary });
 
   // Quiet-hours filter (state already reflects reality).
   const allowed = messages.filter((m) =>

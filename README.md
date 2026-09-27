@@ -129,6 +129,9 @@ comes through.
 `npm run check-alerts` prints the current evaluation without sending (`--send` to send,
 `--summary` to also print today's summary).
 
+Every message actually sent is also appended to `.alerts.log` with the exact metrics
+that triggered it (for tuning thresholds later) — view with `npm run alert-log`.
+
 ## Configuration
 
 Everything is environment variables — see **`.env.example`** for the full list with

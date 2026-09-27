@@ -7,6 +7,7 @@ import { getStatus } from '../src/dess/data.js';
 import { formatHeartbeat, formatDailySummary } from '../src/format.js';
 import { evaluateAlerts, activeTitles, RULES } from '../src/alerts.js';
 import { loadState, saveState } from '../src/state.js';
+import { logAlertEvent } from '../src/alertLog.js';
 
 const send = process.argv.includes('--send');
 const showSummary = process.argv.includes('--summary');
@@ -42,7 +43,10 @@ async function main() {
   if (send && (messages.length || suppressed)) {
     const { start, send, stop } = await import('../src/notify/index.js');
     await start();
-    for (const m of messages) await send(m.text);
+    for (const m of messages) {
+      await send(m.text);
+      logAlertEvent({ ruleId: m.ruleId, level: m.level, kind: m.kind, text: m.text, status });
+    }
     saveState(state);
     await stop();
     console.log('Sent + state saved.');

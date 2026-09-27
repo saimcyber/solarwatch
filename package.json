@@ -12,6 +12,7 @@
     "test": "node test/alerts.test.mjs",
     "send-now": "node scripts/send-now.js",
     "check-alerts": "node scripts/check-alerts.js",
+    "alert-log": "node scripts/show-alert-log.js",
     "list-devices": "node scripts/list-devices.js",
     "list-groups": "node scripts/list-groups.js",
     "join-group": "node scripts/join-group.js"
